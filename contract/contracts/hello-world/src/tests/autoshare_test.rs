@@ -558,7 +558,7 @@ fn test_get_all_groups_includes_inactive() {
     // Verify statuses
     let group1 = all_groups.get(0).unwrap();
     let group2 = all_groups.get(1).unwrap();
-    
+
     assert!(group1.is_active);
     assert!(!group2.is_active);
 }

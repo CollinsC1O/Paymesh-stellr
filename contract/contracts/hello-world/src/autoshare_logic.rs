@@ -367,6 +367,6 @@ pub fn is_group_active(env: Env, id: BytesN<32>) -> Result<bool, Error> {
         .persistent()
         .get(&key)
         .ok_or(Error::NotFound)?;
-    
+
     Ok(details.is_active)
 }
