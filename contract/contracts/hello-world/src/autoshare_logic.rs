@@ -1,7 +1,7 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
-    GroupActivated, GroupDeactivated, Withdrawal,
+    Distribution, GroupActivated, GroupDeactivated, Withdrawal,
 };
 use crate::base::types::{AutoShareDetails, GroupMember, PaymentHistory};
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
@@ -168,10 +168,13 @@ pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, E
 pub fn add_group_member(
     env: Env,
     id: BytesN<32>,
+    caller: Address,
     address: Address,
     percentage: u32,
 ) -> Result<(), Error> {
-    // Check if contract is paused
+    // Require caller auth and check pause
+    caller.require_auth();
+
     if get_paused_status(&env) {
         return Err(Error::ContractPaused);
     }
@@ -183,6 +186,15 @@ pub fn add_group_member(
         .get(&key)
         .ok_or(Error::NotFound)?;
 
+    // Only the group creator can add members
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
     // Check if already a member
     for member in details.members.iter() {
         if member.address == address {
@@ -192,7 +204,7 @@ pub fn add_group_member(
 
     // Add new member
     details.members.push_back(GroupMember {
-        address,
+        address: address.clone(),
         percentage,
     });
 
@@ -201,6 +213,20 @@ pub fn add_group_member(
 
     // Save updated details
     env.storage().persistent().set(&key, &details);
+
+    // Also update the GroupMembers storage to keep both places in sync
+    let members_key = DataKey::GroupMembers(id.clone());
+    let mut members: Vec<GroupMember> = env
+        .storage()
+        .persistent()
+        .get(&members_key)
+        .unwrap_or(Vec::new(&env));
+    members.push_back(GroupMember {
+        address: address.clone(),
+        percentage,
+    });
+    env.storage().persistent().set(&members_key, &members);
+
     Ok(())
 }
 
@@ -759,6 +785,106 @@ pub fn is_group_active(env: Env, id: BytesN<32>) -> Result<bool, Error> {
     Ok(details.is_active)
 }
 
+// ============================================================================
+// Group Deletion
+// ============================================================================
+
+/// Permanently deletes a group from the contract.
+/// Requirements:
+/// 1. Caller must be the group creator or admin
+/// 2. Group must be deactivated
+/// 3. Group must have 0 remaining usages (or they are forfeited)
+/// 4. Removes group from AllGroups list
+/// 5. Removes AutoShare(id) entry
+/// 6. Removes GroupMembers(id) entry
+/// 7. Archives payment history before deletion (keeps it for audit trail)
+/// 8. Emits GroupDeleted event
+pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
+    caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // Step 1: Verify group exists
+    let key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+
+    // Step 2: Verify caller is creator or admin
+    let admin_result = get_admin(env.clone());
+    let is_admin = admin_result.is_ok() && admin_result.unwrap() == caller;
+    let is_creator = details.creator == caller;
+
+    if !is_creator && !is_admin {
+        return Err(Error::Unauthorized);
+    }
+
+    // Step 3: Check group is already deactivated
+    if details.is_active {
+        return Err(Error::GroupNotDeactivated);
+    }
+
+    // Step 4: Check group has 0 remaining usages (or warn about forfeiture)
+    // We allow deletion even with remaining usages, but this is a design choice
+    // In production, you might want to enforce zero usages or handle refunds
+    if details.usage_count > 0 {
+        // Option 1: Strict enforcement - uncomment to require zero usages
+        // return Err(Error::GroupHasRemainingUsages);
+        
+        // Option 2: Allow deletion with forfeiture (current implementation)
+        // The remaining usages are simply forfeited
+    }
+
+    // Step 5: Remove the group from AllGroups list
+    let all_groups_key = DataKey::AllGroups;
+    let group_ids: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&all_groups_key)
+        .unwrap_or(Vec::new(&env));
+
+    let mut new_group_ids: Vec<BytesN<32>> = Vec::new(&env);
+    for group_id in group_ids.iter() {
+        if group_id != id {
+            new_group_ids.push_back(group_id);
+        }
+    }
+    env.storage()
+        .persistent()
+        .set(&all_groups_key, &new_group_ids);
+
+    // Step 6: Remove the AutoShare(id) entry
+    env.storage().persistent().remove(&key);
+
+    // Step 7: Remove GroupMembers(id) entry
+    let members_key = DataKey::GroupMembers(id.clone());
+    env.storage().persistent().remove(&members_key);
+
+    // Step 8: Archive payment history (we keep it for audit trail)
+    // Payment history is intentionally NOT deleted to maintain financial records
+    // This is a best practice for compliance and auditing purposes
+    // The entries remain in:
+    // - DataKey::UserPaymentHistory(Address)
+    // - DataKey::GroupPaymentHistory(BytesN<32>)
+
+    // Step 9: Emit deletion event
+    GroupDeleted {
+        deleter: caller,
+        id: id.clone(),
+    }
+    .publish(&env);
+
+    Ok(())
+}
+
+// ============================================================================
+// Contract Balance & Withdrawal
+// ============================================================================
+
 pub fn get_contract_balance(env: Env, token: Address) -> i128 {
     let client = token::TokenClient::new(&env, &token);
     client.balance(&env.current_contract_address())
@@ -792,6 +918,76 @@ pub fn withdraw(
         recipient,
     }
     .publish(&env);
+    Ok(())
+}
+
+#[allow(clippy::needless_borrows_for_generic_args)]
+pub fn distribute(
+    env: Env,
+    id: BytesN<32>,
+    token: Address,
+    amount: i128,
+    sender: Address,
+) -> Result<(), Error> {
+    sender.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    if amount <= 0 {
+        return Err(Error::InvalidAmount);
+    }
+
+    if !is_token_supported(env.clone(), token.clone()) {
+        return Err(Error::UnsupportedToken);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
+    if details.usage_count == 0 {
+        return Err(Error::NoUsagesRemaining);
+    }
+
+    validate_members(&details.members)?;
+
+    let client = token::TokenClient::new(&env, &token);
+    client.transfer(&sender, &env.current_contract_address(), &amount);
+
+    let mut distributed: i128 = 0;
+    let members_len = details.members.len() as usize;
+    for (idx, member) in details.members.iter().enumerate() {
+        let share = if idx + 1 < members_len {
+            (amount * (member.percentage as i128)) / 100
+        } else {
+            amount - distributed
+        };
+        if share > 0 {
+            client.transfer(&env.current_contract_address(), &member.address, &share);
+            distributed += share;
+        }
+    }
+
+    details.usage_count -= 1;
+    env.storage().persistent().set(&key, &details);
+
+    Distribution {
+        id,
+        token,
+        sender,
+        amount,
+    }
+    .publish(&env);
+
     Ok(())
 }
 
