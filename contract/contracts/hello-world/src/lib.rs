@@ -271,6 +271,11 @@ impl AutoShareContract {
     pub fn get_total_usages_paid(env: Env, id: BytesN<32>) -> u32 {
         autoshare_logic::get_total_usages_paid(env, id).unwrap()
     }
+
+    /// Returns the total earnings for a member from a specific group.
+    pub fn get_member_earnings(env: Env, member: Address, group_id: BytesN<32>) -> i128 {
+        autoshare_logic::get_member_earnings(env, member, group_id)
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -297,3 +302,7 @@ mod test_utils_test;
 #[cfg(test)]
 #[path = "tests/distribute_test.rs"]
 mod distribute_test;
+
+#[cfg(test)]
+#[path = "tests/earnings_test.rs"]
+mod earnings_test;
