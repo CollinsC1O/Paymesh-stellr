@@ -11,6 +11,10 @@ use crate::base::types::{
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
+extern crate alloc;
+use alloc::string::String as AllocString;
+use alloc::string::ToString;
+
 #[contracttype]
 pub enum DataKey {
     AutoShare(BytesN<32>),
@@ -45,6 +49,19 @@ fn bump_persistent<K: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(env: &Env, ke
         );
     }
 }
+
+fn is_valid_name(name: &String) -> bool {
+    let alloc_str: AllocString = name.to_string();
+    let trimmed = alloc_str.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if alloc_str.len() > 60 {
+        return false;
+    }
+    true
+}
+
 pub fn create_autoshare(
     env: Env,
     id: BytesN<32>,
@@ -58,6 +75,10 @@ pub fn create_autoshare(
     // Check if contract is paused
     if get_paused_status(&env) {
         return Err(Error::ContractPaused);
+    }
+
+    if !is_valid_name(&name) {
+        return Err(Error::EmptyName);
     }
 
     let key = DataKey::AutoShare(id.clone());
@@ -1167,7 +1188,7 @@ pub fn update_group_name(
         return Err(Error::GroupInactive);
     }
 
-    if new_name.is_empty() {
+    if !is_valid_name(&new_name) {
         return Err(Error::EmptyName);
     }
 

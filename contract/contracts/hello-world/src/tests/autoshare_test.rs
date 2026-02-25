@@ -236,6 +236,66 @@ fn test_create_fails_invalid_percentage() {
 }
 
 #[test]
+#[should_panic] // EmptyName
+fn test_create_fails_empty_name() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let id = BytesN::from_array(&test_env.env, &[1u8; 32]);
+    let name = String::from_str(&test_env.env, "");
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    create_helper(&client, &id, &name, &creator, &members, &test_env);
+}
+
+#[test]
+#[should_panic] // EmptyName
+fn test_create_fails_whitespace_name() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let id = BytesN::from_array(&test_env.env, &[1u8; 32]);
+    let name = String::from_str(&test_env.env, "   ");
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    create_helper(&client, &id, &name, &creator, &members, &test_env);
+}
+
+#[test]
+#[should_panic] // EmptyName
+fn test_create_fails_too_long_name() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let id = BytesN::from_array(&test_env.env, &[1u8; 32]);
+    let name = String::from_str(
+        &test_env.env,
+        "This name is way too long for a valid group name because it is ",
+    );
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    create_helper(&client, &id, &name, &creator, &members, &test_env);
+}
+
+#[test]
 #[should_panic] // EmptyMembers
 fn test_create_fails_empty_members() {
     let test_env = setup_test_env();
