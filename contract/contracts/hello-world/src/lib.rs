@@ -92,6 +92,11 @@ impl AutoShareContract {
         autoshare_logic::get_groups_by_creator(env, creator)
     }
 
+    /// Retrieves all AutoShare groups an address is a member of.
+    pub fn get_groups_by_member(env: Env, member: Address) -> Vec<base::types::AutoShareDetails> {
+        autoshare_logic::get_groups_by_member(env, member)
+    }
+
     /// Returns a paginated list of groups.
     pub fn get_groups_paginated(env: Env, start_index: u32, limit: u32) -> base::types::GroupPage {
         autoshare_logic::get_groups_paginated(env, start_index, limit)
@@ -351,6 +356,10 @@ mod mock_token_test;
 #[cfg(test)]
 #[path = "tests/test_utils.rs"]
 pub mod test_utils;
+
+#[cfg(test)]
+#[path = "tests/get_groups_by_member_test.rs"]
+mod get_groups_by_member_test;
 
 #[cfg(test)]
 #[path = "tests/test_utils_test.rs"]
