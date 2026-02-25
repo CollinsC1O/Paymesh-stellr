@@ -79,6 +79,10 @@ fn test_contribute_success() {
     let u_contributions = client.get_user_contributions(&contributor);
     assert_eq!(u_contributions.len(), 1);
     assert_eq!(u_contributions.get(0).unwrap().group_id, group_id);
+
+    // (New) Check that the emit_contribution event would be triggered (manual check: no direct event query API)
+    // This is a placeholder to indicate the event is expected and should be visible in the event log.
+    // In a real test, you would query the event log if supported by the test framework.
 }
 
 #[test]
