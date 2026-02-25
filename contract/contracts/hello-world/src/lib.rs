@@ -92,6 +92,26 @@ impl AutoShareContract {
         autoshare_logic::get_groups_by_creator(env, creator)
     }
 
+    /// Returns a paginated list of groups.
+    pub fn get_groups_paginated(env: Env, start_index: u32, limit: u32) -> base::types::GroupPage {
+        autoshare_logic::get_groups_paginated(env, start_index, limit)
+    }
+
+    /// Returns a paginated list of groups created by a specific address.
+    pub fn get_groups_by_creator_paginated(
+        env: Env,
+        creator: Address,
+        offset: u32,
+        limit: u32,
+    ) -> base::types::GroupPage {
+        autoshare_logic::get_groups_by_creator_paginated(env, creator, offset, limit)
+    }
+
+    /// Returns the total number of groups.
+    pub fn get_group_count(env: Env) -> u32 {
+        autoshare_logic::get_group_count(env)
+    }
+
     /// Checks if an address is a member of a specific group.
     pub fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> bool {
         autoshare_logic::is_group_member(env, id, address).unwrap()
@@ -127,6 +147,11 @@ impl AutoShareContract {
     /// Activates a group. Only the creator can activate.
     pub fn activate_group(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::activate_group(env, id, caller).unwrap();
+    }
+
+    /// Updates the name of a group. Only the creator can update.
+    pub fn update_group_name(env: Env, id: BytesN<32>, caller: Address, new_name: String) {
+        autoshare_logic::update_group_name(env, id, caller, new_name).unwrap();
     }
 
     /// Returns whether a group is active.
@@ -234,6 +259,26 @@ impl AutoShareContract {
     }
 
     // ============================================================================
+    // Distribution History
+    // ============================================================================
+
+    /// Returns all distribution history for a group.
+    pub fn get_group_distributions(
+        env: Env,
+        id: BytesN<32>,
+    ) -> Vec<base::types::DistributionHistory> {
+        autoshare_logic::get_group_distributions(env, id)
+    }
+
+    /// Returns all distribution history for a member.
+    pub fn get_member_distributions(
+        env: Env,
+        member: Address,
+    ) -> Vec<base::types::DistributionHistory> {
+        autoshare_logic::get_member_distributions(env, member)
+    }
+
+    // ============================================================================
     // Usage Tracking
     // ============================================================================
 
@@ -247,9 +292,46 @@ impl AutoShareContract {
         autoshare_logic::get_total_usages_paid(env, id).unwrap()
     }
 
-    /// Reduces the usage count by 1 (dummy function for testing).
-    pub fn reduce_usage(env: Env, id: BytesN<32>) {
-        autoshare_logic::reduce_usage(env, id).unwrap();
+    /// Returns the total earnings for a member from a specific group.
+    pub fn get_member_earnings(env: Env, member: Address, group_id: BytesN<32>) -> i128 {
+        autoshare_logic::get_member_earnings(env, member, group_id)
+    }
+
+    /// Returns the fundraising status for a group.
+    pub fn get_fundraising_status(env: Env, id: BytesN<32>) -> base::types::FundraisingConfig {
+        autoshare_logic::get_fundraising_status(env, id)
+    }
+
+    /// Returns all contributions for a specific group.
+    pub fn get_group_contributions(
+        env: Env,
+        id: BytesN<32>,
+    ) -> Vec<base::types::FundraisingContribution> {
+        autoshare_logic::get_group_contributions(env, id)
+    }
+
+    /// Returns all contributions made by a specific user.
+    pub fn get_user_contributions(
+        env: Env,
+        user: Address,
+    ) -> Vec<base::types::FundraisingContribution> {
+        autoshare_logic::get_user_contributions(env, user)
+    }
+
+    /// Starts a fundraising campaign for a group.
+    pub fn start_fundraising(env: Env, id: BytesN<32>, caller: Address, target_amount: i128) {
+        autoshare_logic::start_fundraising(env, id, caller, target_amount).unwrap();
+    }
+
+    /// Contributes funds to a fundraising campaign.
+    pub fn contribute(
+        env: Env,
+        id: BytesN<32>,
+        token: Address,
+        amount: i128,
+        contributor: Address,
+    ) {
+        autoshare_logic::contribute(env, id, token, amount, contributor).unwrap();
     }
 }
 
@@ -277,3 +359,23 @@ mod test_utils_test;
 #[cfg(test)]
 #[path = "tests/distribute_test.rs"]
 mod distribute_test;
+
+#[cfg(test)]
+#[path = "tests/earnings_test.rs"]
+mod earnings_test;
+
+#[cfg(test)]
+#[path = "tests/pagination_test.rs"]
+mod pagination_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_test.rs"]
+mod fundraising_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_start_test.rs"]
+mod fundraising_start_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_contribute_test.rs"]
+mod fundraising_contribute_test;

@@ -1,6 +1,9 @@
 use soroban_sdk::{Address, BytesN, Env, String, Vec};
 
-use crate::base::types::{AutoShareDetails, GroupMember, PaymentHistory};
+use crate::base::types::{
+    AutoShareDetails, DistributionHistory, FundraisingConfig, FundraisingContribution, GroupMember,
+    PaymentHistory,
+};
 
 /// AutoShareTrait defines the interface for the AutoShare contract.
 /// This trait serves as a formal specification that the AutoShareContract implementation
@@ -62,6 +65,9 @@ pub trait AutoShareTrait {
     /// Retrieves all AutoShare groups created by a specific address.
     fn get_groups_by_creator(env: Env, creator: Address) -> Vec<AutoShareDetails>;
 
+    /// Returns the total number of groups.
+    fn get_group_count(env: Env) -> u32;
+
     /// Checks if an address is a member of a specific group.
     fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> bool;
 
@@ -87,6 +93,9 @@ pub trait AutoShareTrait {
 
     /// Activates a group. Only the creator can activate.
     fn activate_group(env: Env, id: BytesN<32>, caller: Address);
+
+    /// Updates the name of a group. Only the creator can update.
+    fn update_group_name(env: Env, id: BytesN<32>, caller: Address, new_name: String);
 
     /// Returns whether a group is active.
     fn is_group_active(env: Env, id: BytesN<32>) -> bool;
@@ -148,6 +157,16 @@ pub trait AutoShareTrait {
     fn get_group_payment_history(env: Env, id: BytesN<32>) -> Vec<PaymentHistory>;
 
     // ============================================================================
+    // Distribution History
+    // ============================================================================
+
+    /// Returns all distribution history for a group.
+    fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionHistory>;
+
+    /// Returns all distribution history for a member.
+    fn get_member_distributions(env: Env, member: Address) -> Vec<DistributionHistory>;
+
+    // ============================================================================
     // Usage Tracking
     // ============================================================================
 
@@ -157,6 +176,18 @@ pub trait AutoShareTrait {
     /// Returns the total usages paid for a group.
     fn get_total_usages_paid(env: Env, id: BytesN<32>) -> u32;
 
-    /// Reduces the usage count by 1 (dummy function for testing).
-    fn reduce_usage(env: Env, id: BytesN<32>);
+    /// Returns the fundraising status for a group.
+    fn get_fundraising_status(env: Env, id: BytesN<32>) -> FundraisingConfig;
+
+    /// Returns all contributions for a specific group.
+    fn get_group_contributions(env: Env, id: BytesN<32>) -> Vec<FundraisingContribution>;
+
+    /// Returns all contributions made by a specific user.
+    fn get_user_contributions(env: Env, user: Address) -> Vec<FundraisingContribution>;
+
+    /// Starts a fundraising campaign for a group.
+    fn start_fundraising(env: Env, id: BytesN<32>, caller: Address, target_amount: i128);
+
+    /// Contributes funds to a fundraising campaign.
+    fn contribute(env: Env, id: BytesN<32>, token: Address, amount: i128, contributor: Address);
 }

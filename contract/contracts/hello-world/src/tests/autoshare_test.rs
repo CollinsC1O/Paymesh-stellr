@@ -1072,6 +1072,98 @@ fn test_creator_can_activate_group() {
 }
 
 #[test]
+fn test_update_group_name_success() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let id = BytesN::from_array(&test_env.env, &[1u8; 32]);
+    let name = String::from_str(&test_env.env, "Original Name");
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    create_helper(&client, &id, &name, &creator, &members, &test_env);
+
+    let new_name = String::from_str(&test_env.env, "Updated Name");
+    client.update_group_name(&id, &creator, &new_name);
+
+    let details = client.get(&id);
+    assert_eq!(details.name, new_name);
+}
+
+#[test]
+#[should_panic]
+fn test_update_group_name_unauthorized() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let non_creator = test_env.users.get(1).unwrap().clone();
+    let id = BytesN::from_array(&test_env.env, &[1u8; 32]);
+    let name = String::from_str(&test_env.env, "Test Group");
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    create_helper(&client, &id, &name, &creator, &members, &test_env);
+
+    let new_name = String::from_str(&test_env.env, "Hacked Name");
+    client.update_group_name(&id, &non_creator, &new_name);
+}
+
+#[test]
+#[should_panic]
+fn test_update_group_name_inactive_group() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let id = BytesN::from_array(&test_env.env, &[1u8; 32]);
+    let name = String::from_str(&test_env.env, "Test Group");
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    create_helper(&client, &id, &name, &creator, &members, &test_env);
+    client.deactivate_group(&id, &creator);
+
+    let new_name = String::from_str(&test_env.env, "New Name");
+    client.update_group_name(&id, &creator, &new_name);
+}
+
+#[test]
+#[should_panic]
+fn test_update_group_name_empty_name() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let id = BytesN::from_array(&test_env.env, &[1u8; 32]);
+    let name = String::from_str(&test_env.env, "Test Group");
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    create_helper(&client, &id, &name, &creator, &members, &test_env);
+
+    let empty_name = String::from_str(&test_env.env, "");
+    client.update_group_name(&id, &creator, &empty_name);
+}
+
+#[test]
 #[should_panic] // GroupInactive
 fn test_updating_inactive_group_fails() {
     let test_env = setup_test_env();
