@@ -32,6 +32,7 @@ pub enum DataKey {
 const DAY_IN_LEDGERS: u32 = 17280;
 const PERSISTENT_BUMP_THRESHOLD: u32 = 7 * DAY_IN_LEDGERS; // 1 week
 const PERSISTENT_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS; // 30 days
+const MAX_MEMBERS: u32 = 50; // Maximum number of members per group to prevent DoS
 
 fn bump_persistent<K: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(env: &Env, key: &K) {
     if env.storage().persistent().has(key) {
@@ -304,6 +305,11 @@ pub fn add_group_member(
         if member.address == address {
             return Err(Error::AlreadyExists);
         }
+    }
+
+    // Check if adding this member would exceed MAX_MEMBERS
+    if details.members.len() >= MAX_MEMBERS {
+        return Err(Error::MaxMembersExceeded);
     }
 
     // Add new member
@@ -883,6 +889,11 @@ pub fn update_members(
     // Validate new members
     if new_members.is_empty() {
         return Err(Error::EmptyMembers);
+    }
+
+    // Check if new members count exceeds MAX_MEMBERS
+    if new_members.len() > MAX_MEMBERS {
+        return Err(Error::MaxMembersExceeded);
     }
 
     let mut total_percentage: u32 = 0;

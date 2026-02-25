@@ -379,3 +379,7 @@ mod fundraising_start_test;
 #[cfg(test)]
 #[path = "tests/fundraising_contribute_test.rs"]
 mod fundraising_contribute_test;
+
+#[cfg(test)]
+#[path = "tests/max_members_test.rs"]
+mod max_members_test;
