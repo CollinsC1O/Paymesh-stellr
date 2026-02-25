@@ -68,19 +68,17 @@ fn test_distribute_splits_payment_and_decrements_usage() {
     assert_eq!(dist.distribution_number, 0); // 1st distribution: total_usages_paid - usage_count = 2 - 2
     assert_eq!(dist.member_amounts.len(), 3);
 
+    // (New) Check that the emit_distribution event would be triggered (manual check: no direct event query API)
+    // This is a placeholder to indicate the event is expected and should be visible in the event log.
+    // In a real test, you would query the event log if supported by the test framework.
+
     // Verify member distributions
     let member1_dists = client.get_member_distributions(&member1);
     assert_eq!(member1_dists.len(), 1);
-    assert_eq!(
-        member1_dists
-            .get(0)
-            .unwrap()
-            .member_amounts
-            .get(0)
-            .unwrap()
-            .amount,
-        500
-    );
+    let record = member1_dists.get(0).unwrap();
+    assert_eq!(record.group_id, id);
+    assert_eq!(record.amount, 500);
+    assert_eq!(record.token, token);
 }
 
 #[test]

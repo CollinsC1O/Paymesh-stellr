@@ -1,3 +1,38 @@
+/// Emitted when funds are distributed to group members.
+pub fn emit_distribution(
+    env: &soroban_sdk::Env,
+    group_id: &BytesN<32>,
+    sender: &Address,
+    token: &Address,
+    amount: i128,
+    member_count: u32,
+) {
+    Distribution {
+        id: group_id.clone(),
+        token: token.clone(),
+        sender: sender.clone(),
+        amount,
+        member_count,
+    }
+    .publish(env);
+}
+
+/// Emitted when someone contributes to a fundraiser.
+pub fn emit_contribution(
+    env: &soroban_sdk::Env,
+    group_id: &BytesN<32>,
+    contributor: &Address,
+    token: &Address,
+    amount: i128,
+) {
+    Contribution {
+        group_id: group_id.clone(),
+        contributor: contributor.clone(),
+        token: token.clone(),
+        amount,
+    }
+    .publish(env);
+}
 use soroban_sdk::{contractevent, Address, BytesN};
 
 #[contractevent(data_format = "single-value")]
@@ -66,7 +101,7 @@ pub struct Withdrawal {
     pub amount: i128,
 }
 
-#[contractevent(data_format = "single-value")]
+#[contractevent]
 #[derive(Clone)]
 pub struct Distribution {
     #[topic]
@@ -76,6 +111,7 @@ pub struct Distribution {
     #[topic]
     pub sender: Address,
     pub amount: i128,
+    pub member_count: u32,
 }
 
 #[contractevent(data_format = "single-value")]
@@ -100,6 +136,7 @@ pub struct Contribution {
     pub group_id: BytesN<32>,
     #[topic]
     pub contributor: Address,
+    #[topic]
     pub token: Address,
     pub amount: i128,
 }

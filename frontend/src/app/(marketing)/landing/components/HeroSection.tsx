@@ -43,7 +43,7 @@ export default function HeroSection() {
           transition={{ delay: 0.6, duration: 0.8 }}
         >
           <Link
-            href="/overview"
+            href="/user/overview"
             className="bg-[#5B63D6] hover:bg-[#4B53C6] text-white px-8 py-3 rounded-full text-sm font-bold transition-all shadow-[0_0_20px_rgba(91,99,214,0.3)] hover:shadow-[0_0_40px_rgba(91,99,214,0.5)]"
           >
             LAUNCH APP
